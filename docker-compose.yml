@@ -29,7 +29,7 @@ services:
         build:
             context: ./
             dockerfile: ./docker/nginx/Dockerfile
-        image: docker.pkg.github.com/paulherron/docker-traefik-nginx-example/example-nginx
+        image: paulherron/docker-traefik-nginx-example
         labels:
             # Need to explicitly enable because providers.docker.exposedByDefault=false
             - "traefik.enable=true"
