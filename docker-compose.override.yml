@@ -1,0 +1,12 @@
+# Contains override settings for local development
+version: '3.5'
+services:
+    nginx:
+        labels:
+            - "traefik.http.routers.example-unsecure.rule=Host(`local.example.paulherron.com`)"
+            - "traefik.http.routers.example-secure.rule=Host(`local.example.paulherron.com`)"
+        volumes:
+            # For local development, sync the entire working directory
+            # into the container, so that anything you change on the host
+            # immediately appears inside the container
+            - ./:/var/www/html:cached

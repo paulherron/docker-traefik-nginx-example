@@ -1,0 +1,60 @@
+# Contains 'production' settings - see `docker-compose.override.yml`
+# for additional settings for local development
+version: '3.5'
+services:
+    traefik:
+        container_name: traefik
+        image: traefik:v2.0
+        command:
+            - "--log.level=DEBUG"
+            - "--providers.docker=true"
+            - "--providers.docker.exposedByDefault=false"
+            - "--entrypoints.web.address=:80"
+            - "--entrypoints.websecure.address=:443"
+            - "--certificatesresolvers.myhttpchallenge.acme.httpchallenge=true"
+            - "--certificatesresolvers.myhttpchallenge.acme.httpchallenge.entrypoint=web"
+            - "--certificatesresolvers.myhttpchallenge.acme.storage=/letsencrypt/acme.json"
+        restart: always
+        ports:
+            - 80:80
+            - 443:443
+        volumes:
+            - /var/run/docker.sock:/var/run/docker.sock
+            - ./docker/letsencrypt:/letsencrypt
+        networks:
+            - traefik
+
+    nginx:
+        container_name: example_nginx
+        build:
+            context: ./
+            dockerfile: ./docker/nginx/Dockerfile
+        image: docker.pkg.github.com/paulherron/simple-docker-example/example-nginx
+        labels:
+            # Need to explicitly enable because providers.docker.exposedByDefault=false
+            - "traefik.enable=true"
+            - "traefik.docker.network=traefik"
+            # Port declaration for which Nginx port Traefik should forward requests on to. It's
+            # not strictly required here - you could just skip this label and run Nginx on port
+            # 80 and everything would just work. But if you ultimately end up running multiple
+            # websites (i.e. multiple Nginx containers) on a single server, it can be helpful
+            # to have them on separate, explicit ports like this.
+            - "traefik.port=8088"
+            - "traefik.http.routers.example-unsecure.rule=Host(`example.paulherron.com`)"
+            - "traefik.http.routers.example-unsecure.entrypoints=web"
+            # Use HTTPS
+            - "traefik.http.routers.example-secure.entrypoints=websecure"
+            - "traefik.http.routers.example-secure.tls.certresolver=myhttpchallenge"
+            - "traefik.http.routers.example-secure.rule=Host(`example.paulherron.com`)"
+            # Redirect from HTTP to HTTPS
+            - "traefik.http.middlewares.redirect-to-https.redirectscheme.scheme=https"
+            - "traefik.http.routers.example-unsecure.middlewares=redirect-to-https"
+        networks:
+            - example_internal
+            - traefik
+
+networks:
+    example_internal:
+        name: example_internal
+    traefik:
+        name: traefik
